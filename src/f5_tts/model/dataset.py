@@ -1,8 +1,16 @@
 import json
+import warnings
 from importlib.resources import files
 
 import torch
 import torch.nn.functional as F
+
+warnings.filterwarnings(
+    "ignore",
+    message=r"torio\.io\._streaming_media_decoder\.StreamingMediaDecoder has been deprecated\..*",
+    category=UserWarning,
+)
+
 import torchaudio
 from datasets import Dataset as Dataset_
 from datasets import load_from_disk

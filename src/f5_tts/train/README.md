@@ -35,9 +35,50 @@ Use guidance see [#57 here](https://github.com/SWivid/F5-TTS/discussions/57#disc
 python src/f5_tts/train/datasets/prepare_csv_wavs.py /path/to/metadata.csv /path/to/output
 ```
 
+### 3. Create custom dataset with JSONL manifest
+Prepare a JSONL manifest with one object per line. Each object must contain
+`audio_filepath` (an absolute audio path), `duration` (in seconds), and `text`.
+
+For BPE training, this preparation step and BPE training are independent: the
+manifest preparation stores the original text, and the model applies BPE when
+it batches text for training or inference. You may train BPE before or after
+this step, but it must be available before model training starts.
+
+```json
+{"audio_filepath": "/path/to/audio.wav", "duration": 2.5, "text": "Hello."}
+```
+
+```bash
+python src/f5_tts/train/datasets/prepare_manifest.py /path/to/manifest.jsonl /path/to/output
+```
+
+Use `--pretrain` to build `vocab.txt` from the manifest text instead of using the pretrained vocabulary.
+
+### 4. Train a BPE tokenizer
+Train a SentencePiece BPE tokenizer directly from the `text` field in the JSONL manifest.
+Normalization is disabled (`identity`) and byte fallback is disabled.
+
+When using BPE, the practical order is to train this tokenizer first, then run
+`prepare_manifest.py`, and finally start model training. `prepare_manifest.py`
+does not convert text into character or BPE IDs.
+
+```bash
+python src/f5_tts/train/datasets/train_bpe.py \
+	/path/to/manifest.jsonl /path/to/tokenizer \
+	--vocab-size 4096
+```
+
+The command writes `/path/to/tokenizer.model` and `/path/to/tokenizer.vocab`.
+Use `--help` for corpus sampling, sentence length, character coverage, and reserved-symbol options.
+
 ## Training & Finetuning
 
 Once your datasets are prepared, you can start the training process.
+
+For BPE training, set `model.tokenizer: bpe` and
+`model.tokenizer_path: /path/to/tokenizer.model` in the YAML config. The
+dataset directory must use the corresponding `_bpe` suffix, for example
+`data/MyDataset_bpe`.
 
 ### 1. Training script used for pretrained model
 

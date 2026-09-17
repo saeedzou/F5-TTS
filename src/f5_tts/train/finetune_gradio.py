@@ -128,7 +128,7 @@ def save_settings(
 
 # Load settings from a JSON file
 def load_settings(project_name):
-    project_name = project_name.replace("_pinyin", "").replace("_char", "")
+    project_name = project_name.replace("_pinyin", "").replace("_char", "").replace("_bpe", "")
     path_project = _safe_project_path(path_project_ckpts, project_name)
     file_setting = os.path.join(path_project, "setting.json")
 
@@ -400,10 +400,12 @@ def start_training(
             tokenizer_type = "pinyin"
         elif dataset_name.endswith("_char"):
             tokenizer_type = "char"
-    else:
+        elif dataset_name.endswith("_bpe"):
+            tokenizer_type = "bpe"
+    elif tokenizer_type not in ["bpe", "custom"]:
         tokenizer_type = "custom"
 
-    dataset_name = dataset_name.replace("_pinyin", "").replace("_char", "")
+    dataset_name = dataset_name.replace("_pinyin", "").replace("_char", "").replace("_bpe", "")
 
     if mixed_precision != "none":
         fp16 = f"--mixed_precision={mixed_precision}"
@@ -1393,7 +1395,7 @@ For tutorial and updates check here (https://github.com/SWivid/F5-TTS/discussion
 
     with gr.Row():
         projects, projects_selelect = get_list_projects()
-        tokenizer_type = gr.Radio(label="Tokenizer Type", choices=["pinyin", "char", "custom"], value="pinyin")
+        tokenizer_type = gr.Radio(label="Tokenizer Type", choices=["pinyin", "char", "custom", "bpe"], value="pinyin")
         project_name = gr.Textbox(label="Project Name", value="my_speak")
         bt_create = gr.Button("Create a New Project")
 

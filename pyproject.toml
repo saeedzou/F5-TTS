@@ -29,6 +29,7 @@ dependencies = [
     "pypinyin",
     "rjieba",
     "safetensors",
+    "sentencepiece",
     "soundfile",
     "tomli",
     "torch>=2.0.0",

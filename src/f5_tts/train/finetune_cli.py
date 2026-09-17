@@ -52,13 +52,17 @@ def parse_args():
     parser.add_argument("--finetune", action="store_true", help="Use Finetune")
     parser.add_argument("--pretrain", type=str, default=None, help="the path to the checkpoint")
     parser.add_argument(
-        "--tokenizer", type=str, default="pinyin", choices=["pinyin", "char", "custom"], help="Tokenizer type"
+        "--tokenizer",
+        type=str,
+        default="pinyin",
+        choices=["pinyin", "char", "custom", "bpe"],
+        help="Tokenizer type",
     )
     parser.add_argument(
         "--tokenizer_path",
         type=str,
         default=None,
-        help="Path to custom tokenizer vocab file (only used if tokenizer = 'custom')",
+        help="Path to custom vocab file or SentencePiece model (used by custom and bpe tokenizers)",
     )
     parser.add_argument(
         "--log_samples",
@@ -153,9 +157,9 @@ def main():
     # Use the tokenizer and tokenizer_path provided in the command line arguments
 
     tokenizer = args.tokenizer
-    if tokenizer == "custom":
+    if tokenizer in ["custom", "bpe"]:
         if not args.tokenizer_path:
-            raise ValueError("Custom tokenizer selected, but no tokenizer_path provided.")
+            raise ValueError(f"{tokenizer} tokenizer selected, but no tokenizer_path provided.")
         tokenizer_path = args.tokenizer_path
     else:
         tokenizer_path = args.dataset_name

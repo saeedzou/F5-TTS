@@ -29,7 +29,7 @@ def main(model_cfg):
     wandb_resume_id = model_cfg.ckpts.get("wandb_resume_id", None)
 
     # set text tokenizer
-    if tokenizer != "custom":
+    if tokenizer not in ["custom", "bpe"]:
         tokenizer_path = model_cfg.datasets.name
     else:
         tokenizer_path = model_cfg.model.tokenizer_path

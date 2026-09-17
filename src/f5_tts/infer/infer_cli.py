@@ -73,6 +73,12 @@ parser.add_argument(
     help="The path to vocab file .txt, leave blank to use default",
 )
 parser.add_argument(
+    "--tokenizer",
+    type=str,
+    choices=["custom", "bpe"],
+    help="Tokenizer type; bpe expects a SentencePiece .model file",
+)
+parser.add_argument(
     "-r",
     "--ref_audio",
     type=str,
@@ -271,6 +277,15 @@ model_cfg = OmegaConf.load(
 model_cls = get_class(f"f5_tts.model.{model_cfg.model.backbone}")
 model_arc = model_cfg.model.arch
 
+configured_tokenizer = model_cfg.model.get("tokenizer", "custom")
+tokenizer = args.tokenizer or ("bpe" if configured_tokenizer == "bpe" else "custom")
+if tokenizer == "bpe" and not vocab_file:
+    vocab_file = model_cfg.model.get("tokenizer_path")
+if tokenizer == "bpe" and not vocab_file:
+    raise ValueError("BPE tokenizer selected, but no --vocab_file or model.tokenizer_path was provided.")
+if vocab_file and vocab_file.startswith("hf://"):
+    vocab_file = str(cached_path(vocab_file))
+
 repo_name, ckpt_step, ckpt_type = "F5-TTS", 1250000, "safetensors"
 
 if model != "F5TTS_Base":
@@ -297,7 +312,13 @@ if vocab_file.startswith("hf://"):
 
 print(f"Using {model}...")
 ema_model = load_model(
-    model_cls, model_arc, ckpt_file, mel_spec_type=vocoder_name, vocab_file=vocab_file, device=device
+    model_cls,
+    model_arc,
+    ckpt_file,
+    mel_spec_type=vocoder_name,
+    vocab_file=vocab_file,
+    tokenizer=tokenizer,
+    device=device,
 )
 
 

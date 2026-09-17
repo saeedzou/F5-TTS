@@ -8,6 +8,7 @@ from collections import defaultdict
 from importlib.resources import files
 
 import rjieba
+import sentencepiece as spm
 import torch
 from pypinyin import Style, lazy_pinyin
 from torch.nn.utils.rnn import pad_sequence
@@ -98,10 +99,13 @@ def list_str_to_tensor(text: list[str], padding_value=-1) -> int["b nt"]:
 # char tokenizer, based on custom dataset's extracted .txt file
 def list_str_to_idx(
     text: list[str] | list[list[str]],
-    vocab_char_map: dict[str, int],  # {char: idx}
+    vocab_char_map: dict[str, int] | spm.SentencePieceProcessor,
     padding_value=-1,
 ) -> int["b nt"]:
-    list_idx_tensors = [torch.tensor([vocab_char_map.get(c, 0) for c in t]) for t in text]  # pinyin or char style
+    if isinstance(vocab_char_map, spm.SentencePieceProcessor):
+        list_idx_tensors = [torch.tensor(vocab_char_map.encode(t, out_type=int)) for t in text]
+    else:
+        list_idx_tensors = [torch.tensor([vocab_char_map.get(c, 0) for c in t]) for t in text]
     text = pad_sequence(list_idx_tensors, padding_value=padding_value, batch_first=True)
     return text
 
@@ -115,9 +119,11 @@ def get_tokenizer(dataset_name, tokenizer: str = "pinyin"):
                 - "char" for char-wise tokenizer, need .txt vocab_file
                 - "byte" for utf-8 tokenizer
                 - "custom" if you're directly passing in a path to the vocab.txt you want to use
+                - "bpe" if you're directly passing in a SentencePiece .model file
     vocab_size  - if use "pinyin", all available pinyin types, common alphabets (also those with accent) and symbols
                 - if use "char", derived from unfiltered character & symbol counts of custom dataset
                 - if use "byte", set to 256 (unicode byte range)
+                - if use "bpe", derived from the SentencePiece model
     """
     if tokenizer in ["pinyin", "char"]:
         tokenizer_path = os.path.join(files("f5_tts").joinpath("../../data"), f"{dataset_name}_{tokenizer}/vocab.txt")
@@ -138,6 +144,14 @@ def get_tokenizer(dataset_name, tokenizer: str = "pinyin"):
             for i, char in enumerate(f):
                 vocab_char_map[char[:-1]] = i
         vocab_size = len(vocab_char_map)
+
+    elif tokenizer == "bpe":
+        tokenizer_path = os.fspath(dataset_name)
+        vocab_char_map = spm.SentencePieceProcessor(model_file=tokenizer_path)
+        vocab_size = vocab_char_map.get_piece_size()
+
+    else:
+        raise ValueError(f"Unsupported tokenizer: {tokenizer}")
 
     return vocab_char_map, vocab_size
 

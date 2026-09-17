@@ -244,10 +244,10 @@ def load_model(
     ode_method=ode_method,
     use_ema=True,
     device=device,
+    tokenizer="custom",
 ):
     if vocab_file == "":
         vocab_file = str(files("f5_tts").joinpath("infer/examples/vocab.txt"))
-    tokenizer = "custom"
 
     print("\nvocab : ", vocab_file)
     print("token : ", tokenizer)

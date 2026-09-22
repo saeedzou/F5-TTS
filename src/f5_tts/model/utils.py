@@ -95,6 +95,8 @@ def list_str_to_tensor(text: list[str], padding_value=-1) -> int["b nt"]:
     text = pad_sequence(list_tensors, padding_value=padding_value, batch_first=True)
     return text
 
+def is_bpe_tokenizer(vocab_char_map) -> bool:
+    return isinstance(vocab_char_map, spm.SentencePieceProcessor)
 
 # char tokenizer, based on custom dataset's extracted .txt file
 def list_str_to_idx(
@@ -102,8 +104,13 @@ def list_str_to_idx(
     vocab_char_map: dict[str, int] | spm.SentencePieceProcessor,
     padding_value=-1,
 ) -> int["b nt"]:
-    if isinstance(vocab_char_map, spm.SentencePieceProcessor):
-        list_idx_tensors = [torch.tensor(vocab_char_map.encode(t, out_type=int)) for t in text]
+    if is_bpe_tokenizer(vocab_char_map):
+        if not all(isinstance(t, str) for t in text):
+            raise TypeError(
+                "BPE tokenizer expects raw strings, got per-symbol lists. "
+                "Do not run convert_char_to_pinyin for BPE; use prepare_text_for_model()."
+            )
+        list_idx_tensors = [torch.tensor(vocab_char_map.encode(t, out_type=int), dtype=torch.long) for t in text]
     else:
         list_idx_tensors = [torch.tensor([vocab_char_map.get(c, 0) for c in t]) for t in text]
     text = pad_sequence(list_idx_tensors, padding_value=padding_value, batch_first=True)
@@ -230,3 +237,13 @@ def get_epss_timesteps(n, device, dtype):
     if not t:
         return torch.linspace(0, 1, n + 1, device=device, dtype=dtype)
     return dt * torch.tensor(t, device=device, dtype=dtype)
+
+def prepare_text_for_model(text_list: list[str], vocab_char_map=None) -> list[str] | list[list[str]]:
+    """
+    char / pinyin / custom vocab -> per-symbol lists (convert_char_to_pinyin), as before.
+    BPE -> raw strings, unchanged. This is what training feeds the tokenizer (prepare_manifest.py stores raw text),
+    and convert_char_to_pinyin would otherwise rewrite the text (spaces, quotes, Chinese -> pinyin).
+    """
+    if is_bpe_tokenizer(vocab_char_map):
+        return list(text_list)
+    return convert_char_to_pinyin(text_list)

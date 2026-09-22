@@ -36,7 +36,7 @@ def read_manifest(manifest_path):
     text_vocab_set = set()
 
     with manifest_path.open("r", encoding="utf-8-sig") as manifest_file:
-        for line_number, line in enumerate(manifest_file, start=1):
+        for line_number, line in enumerate(tqdm(manifest_file, desc="Reading manifest ..."), start=1):
             if not line.strip():
                 continue
 

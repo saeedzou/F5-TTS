@@ -49,6 +49,7 @@ class Trainer:
         accelerate_kwargs: dict = dict(),
         ema_kwargs: dict = dict(),
         bnb_optimizer: bool = False,
+        text_embed_lr: float | None = None,
         mel_spec_type: str = "vocos",  # "vocos" | "bigvgan"
         is_local_vocoder: bool = False,  # use local path vocoder
         local_vocoder_path: str = "",  # local vocoder path
@@ -134,13 +135,22 @@ class Trainer:
         self.noise_scheduler = noise_scheduler
 
         self.duration_predictor = duration_predictor
+        # text_embed is randomly re-initialized when the vocab changes (e.g. new BPE vocab / new
+        # language); it needs a higher LR than the rest of the pretrained backbone to catch up.
+        text_embed_params = list(model.transformer.text_embed.text_embed.parameters())
+        text_embed_param_ids = {id(p) for p in text_embed_params}
+        base_params = [p for p in model.parameters() if id(p) not in text_embed_param_ids]
+        param_groups = [
+            {"params": base_params, "lr": learning_rate},
+            {"params": text_embed_params, "lr": text_embed_lr if text_embed_lr is not None else learning_rate},
+        ]
 
         if bnb_optimizer:
             import bitsandbytes as bnb
 
-            self.optimizer = bnb.optim.AdamW8bit(model.parameters(), lr=learning_rate)
+            self.optimizer = bnb.optim.AdamW8bit(param_groups)
         else:
-            self.optimizer = AdamW(model.parameters(), lr=learning_rate, fused=True)
+            self.optimizer = AdamW(param_groups, fused=True)
         self.model, self.optimizer = self.accelerator.prepare(self.model, self.optimizer)
 
     @property

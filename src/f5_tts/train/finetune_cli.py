@@ -33,6 +33,9 @@ def parse_args():
     )
     parser.add_argument("--dataset_name", type=str, default="Emilia_ZH_EN", help="Name of the dataset to use")
     parser.add_argument("--learning_rate", type=float, default=1e-5, help="Learning rate for training")
+    parser.add_argument(
+        "--text_embed_lr", type=float, default=None, help="LR for text_embed only (default: same as --learning_rate)"
+    )
     parser.add_argument("--batch_size_per_gpu", type=int, default=3200, help="Batch size per GPU")
     parser.add_argument(
         "--batch_size_type", type=str, default="frame", choices=["frame", "sample"], help="Batch size type"
@@ -205,6 +208,7 @@ def main():
         log_samples=args.log_samples,
         last_per_updates=args.last_per_updates,
         bnb_optimizer=args.bnb_optimizer,
+        text_embed_lr=args.text_embed_lr,
     )
 
     train_dataset = load_dataset(args.dataset_name, tokenizer, mel_spec_kwargs=mel_spec_kwargs)
